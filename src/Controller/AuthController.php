@@ -1,70 +1,38 @@
 <?php
 
-namespace App\Command;
+namespace App\Controller;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
 
-class UpdateSheetCommand extends Command
+class AuthController extends AbstractController
 {
-    /**
-     * @var string
-     */
-    protected static $defaultName = 'app:sheet:update';
-
-    /**
-     * @var ContainerInterface
-     */
-    protected $container;
-
-    /**
-     * @var ParameterBagInterface
-     */
-    protected $options;
+    //protected $container;
 
     public function __construct(
-        ContainerInterface $container,
-        ParameterBagInterface $options,
-        string $name = null
+        ContainerInterface $container
     ) {
-        parent::__construct($name);
-
         $this->container = $container;
-        $this->options = $options;
-    }
-
-    protected function configure()
-    {
-        $this->addArgument('SheetID', InputArgument::REQUIRED, 'SpreadsheetID');
     }
 
     /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     * @throws \Google_Exception
+     * @Route("/gauth/{code}", name="gauth")
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
-    {
-        // Get the API client and construct the service object.
+    public function gauth(
+        Request $request,
+        string $code
+    ) {
         $client = $this->getClient();
         $service = new \Google_Service_Sheets($client);
 
-        // Prints the names and majors of students in a sample spreadsheet:
-        // https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-        $spreadsheetId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
-        $range = 'Class Data!A2:E';
-        $response = $service->spreadsheets_values->get($spreadsheetId, $range);
-        $values = $response->getValues();
+        $token = $client->fetchAccessTokenWithAuthCode($code);
 
-        var_dump($values);
-
-        return 0;
+        return new Response(
+            '<html><body>TEST</body></html>'
+        );
     }
 
     /**
@@ -75,15 +43,13 @@ class UpdateSheetCommand extends Command
     {
         $varDir = $this->container->getParameter('kernel.project_dir') . '/var/data/pmweb-5aa3d9098ad8.json';
 
-        var_dump($varDir);
-        die;
-
         $client = new \Google_Client();
         $client->setApplicationName('Google Sheets API PHP Quickstart');
         $client->setScopes(\Google_Service_Sheets::SPREADSHEETS_READONLY);
         $client->setAuthConfig($varDir/*'credentials.json'*/);
         $client->setAccessType('offline');
         $client->setPrompt('select_account consent');
+        //$client->setRedirectUri('http://6646d4d3.ngrok.io/gauth');
 
         // Load previously authorized token from a file, if it exists.
         // The file token.json stores the user's access and refresh tokens, and is
@@ -124,5 +90,4 @@ class UpdateSheetCommand extends Command
         }
         return $client;
     }
-
 }
